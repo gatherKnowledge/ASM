@@ -1,0 +1,76 @@
+3.3 Effective Addresses
+
+An effective address is any operand to an instruction which references memory. Effective addresses, in NASM, have a very simple syntax: they consist of an expression evaluating to the desired address, enclosed in square brackets. For example:
+
+wordvar dw      123
+        mov     ax,[wordvar]
+        mov     ax,[wordvar+1]
+        mov     ax,[es:wordvar+bx]
+Anything not conforming to this simple system is not a valid memory reference in NASM, for example es:wordvar[bx].
+
+More complicated effective addresses, such as those involving more than one register, work in exactly the same way:
+
+        mov     eax,[ebx*2+ecx+offset]
+        mov     ax,[bp+di+8]
+NASM is capable of doing algebra on these effective addresses, so that things which don't necessarily look legal are perfectly all right:
+
+    mov     eax,[ebx*5]             ; assembles as [ebx*4+ebx]
+    mov     eax,[label1*2-label2]   ; ie [label1+(label1-label2)]
+Some forms of effective address have more than one assembled form; in most such cases NASM will generate the smallest form it can. For example, there are distinct assembled forms for the 32-bit effective addresses [eax*2+0] and [eax+eax], and NASM will generally generate the latter on the grounds that the former requires four bytes to store a zero offset.
+
+NASM has a hinting mechanism which will cause [eax+ebx] and [ebx+eax] to generate different opcodes; this is occasionally useful because [esi+ebp] and [ebp+esi] have different default segment registers.
+
+However, you can force NASM to generate an effective address in a particular form by the use of the keywords BYTE, WORD, DWORD and NOSPLIT. If you need [eax+3] to be assembled using a double-word offset field instead of the one byte NASM will normally generate, you can code [dword eax+3]. Similarly, you can force NASM to use a byte offset for a small value which it hasn't seen on the first pass (see section 3.8 for an example of such a code fragment) by using [byte eax+offset]. As special cases, [byte eax] will code [eax+0] with a byte offset of zero, and [dword eax] will code it with a double-word offset of zero. The normal form, [eax], will be coded with no offset field.
+
+The form described in the previous paragraph is also useful if you are trying to access data in a 32-bit segment from within 16 bit code. For more information on this see the section on mixed-size addressing (section 10.2). In particular, if you need to access data with a known offset that is larger than will fit in a 16-bit value, if you don't specify that it is a dword offset, nasm will cause the high word of the offset to be lost.
+
+Similarly, NASM will split [eax*2] into [eax+eax] because that allows the offset field to be absent and space to be saved; in fact, it will also split [eax*2+offset] into [eax+eax+offset]. You can combat this behaviour by the use of the NOSPLIT keyword: [nosplit eax*2] will force [eax*2+0] to be generated literally. [nosplit eax*1] also has the same effect. In another way, a split EA form [0, eax*2] can be used, too. However, NOSPLIT in [nosplit eax+eax] will be ignored because user's intention here is considered as [eax+eax].
+
+In 64-bit mode, NASM will by default generate absolute addresses. The REL keyword makes it produce RIP–relative addresses. Since this is frequently the normally desired behaviour, see the DEFAULT directive (section 6.2). The keyword ABS overrides REL.
+
+A new form of split effective addres syntax is also supported. This is mainly intended for mib operands as used by MPX instructions, but can be used for any memory reference. The basic concept of this form is splitting base and index.
+
+     mov eax,[ebx+8,ecx*4]   ; ebx=base, ecx=index, 4=scale, 8=disp
+For mib operands, there are several ways of writing effective address depending on the tools. NASM supports all currently possible ways of mib syntax:
+
+     ; bndstx
+     ; next 5 lines are parsed same
+     ; base=rax, index=rbx, scale=1, displacement=3
+     bndstx [rax+0x3,rbx], bnd0      ; NASM - split EA
+     bndstx [rbx*1+rax+0x3], bnd0    ; GAS - '*1' indecates an index reg
+     bndstx [rax+rbx+3], bnd0        ; GAS - without hints
+     bndstx [rax+0x3], bnd0, rbx     ; ICC-1
+     bndstx [rax+0x3], rbx, bnd0     ; ICC-2
+When broadcasting decorator is used, the opsize keyword should match the size of each element.
+
+     VDIVPS zmm4, zmm5, dword [rbx]{1to16}   ; single-precision float
+     VDIVPS zmm4, zmm5, zword [rbx]          ; packed 512 bit memory
+3.4 Constants
+
+NASM understands four different types of constant: numeric, character, string and floating-point.
+
+3.4.1 Numeric Constants
+
+A numeric constant is simply a number. NASM allows you to specify numbers in a variety of number bases, in a variety of ways: you can suffix H or X, D or T, Q or O, and B or Y for hexadecimal, decimal, octal and binary respectively, or you can prefix 0x, for hexadecimal in the style of C, or you can prefix $ for hexadecimal in the style of Borland Pascal or Motorola Assemblers. Note, though, that the $ prefix does double duty as a prefix on identifiers (see section 3.1), so a hex number prefixed with a $ sign must have a digit after the $ rather than a letter. In addition, current versions of NASM accept the prefix 0h for hexadecimal, 0d or 0t for decimal, 0o or 0q for octal, and 0b or 0y for binary. Please note that unlike C, a 0 prefix by itself does not imply an octal constant!
+
+Numeric constants can have underscores (_) interspersed to break up long strings.
+
+Some examples (all producing exactly the same code):
+
+        mov     ax,200          ; decimal
+        mov     ax,0200         ; still decimal
+        mov     ax,0200d        ; explicitly decimal
+        mov     ax,0d200        ; also decimal
+        mov     ax,0c8h         ; hex
+        mov     ax,$0c8         ; hex again: the 0 is required
+        mov     ax,0xc8         ; hex yet again
+        mov     ax,0hc8         ; still hex
+        mov     ax,310q         ; octal
+        mov     ax,310o         ; octal again
+        mov     ax,0o310        ; octal yet again
+        mov     ax,0q310        ; octal yet again
+        mov     ax,11001000b    ; binary
+        mov     ax,1100_1000b   ; same binary constant
+        mov     ax,1100_1000y   ; same binary constant once more
+        mov     ax,0b1100_1000  ; same binary constant yet again
+        mov     ax,0y1100_1000  ; same binary constant yet again
