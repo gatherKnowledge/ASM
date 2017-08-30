@@ -45,16 +45,13 @@ write:
     mov byte [es:di], 'G'
     mov cx, 0000
     call color
-    call exit
+    call end
 
 color:
     inc di
     mov byte [es:di], 0x1E
     inc di
     ret
-exit:
-
-
 
 ; mov byte [es:di], dl
 ; inc di
