@@ -1,6 +1,5 @@
 section .data
-msgBack db ' ', 0x8E
-
+msgBack db ' ', 0x00
 section .text
 [org 0]
 [bits 16]
@@ -8,7 +7,6 @@ section .text
     ; ip의 위치가  해당 위치로 오게 됐을 때
     ; start레이블로 이동해라
     jmp 0x07C0:start
-
 start:
     mov ax, cs
     mov ds, ax
@@ -16,9 +14,8 @@ start:
     mov ax, 0xB800
     mov es, ax
     mov di, 0
-    mov ax, word [msgBack] ; h 부분으로 바꿔서 수정
+    mov ah, byte [msgBack] ; h 부분으로 바꿔서 수정
     mov cx, 0x7D0
-; 사실은 [] 대괄호가 주소 값을 의미하는 연산자였다.
 
 draw:
     mov word [es:di], ax
@@ -43,8 +40,8 @@ write:
     mov byte [es:di], 'N'
     call color
     mov byte [es:di], 'G'
-    mov cx, 0000
     call color
+
     call end
 
 color:
@@ -52,14 +49,14 @@ color:
     mov byte [es:di], 0x1E
     inc di
     ret
-
+hlt
 ; mov byte [es:di], dl
 ; inc di
 ; mov byte [es:di], 0x1E
 
     ; loop write
 
-hlt
+
 
 end:
     times 510-($-$$) db 0
