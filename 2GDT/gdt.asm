@@ -15,7 +15,7 @@ mov     cr0, eax
 
 jmp     $+2
 nop
-nop
+nop 
 
 jmp     0x08:Entry32
 
